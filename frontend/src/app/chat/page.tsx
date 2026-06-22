@@ -24,17 +24,26 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isLoggedIn) router.replace("/login");
-  }, [isLoggedIn, router]);
+    if (!isLoggedIn) {
+      router.replace("/login");
+      return;
+    }
+
+    api<Message[]>(`/chat/history?access_token=${accessToken}`)
+      .then(setMessages)
+      .catch(() => {})
+      .finally(() => setHistoryLoading(false));
+  }, [isLoggedIn, accessToken, router]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, loading]);
 
   async function handleSend() {
     const message = input.trim();
@@ -50,7 +59,6 @@ export default function ChatPage() {
         body: JSON.stringify({
           access_token: accessToken,
           message,
-          history: messages,
         }),
       });
 
@@ -91,7 +99,11 @@ export default function ChatPage() {
 
         <div className="flex-1 flex flex-col min-h-0 border border-gold/10 rounded-xl bg-card/40 overflow-hidden">
           <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-            {messages.length === 0 ? (
+            {historyLoading ? (
+              <div className="h-full flex items-center justify-center py-20">
+                <p className="text-muted-foreground">Loading chat...</p>
+              </div>
+            ) : messages.length === 0 ? (
               <div className="h-full flex items-center justify-center py-20">
                 <div className="text-center">
                   <p className="text-muted-foreground">

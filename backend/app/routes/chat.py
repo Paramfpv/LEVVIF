@@ -7,37 +7,69 @@ from app.services.supabase import get_supabase
 
 router = APIRouter()
 
-
-class ChatMessage(BaseModel):
-    role: str
-    content: str
+MAX_HISTORY_FOR_LLM = 20
 
 
 class ChatRequest(BaseModel):
     access_token: str
     message: str
-    history: list[ChatMessage] = []
+
+
+class ChatMessageOut(BaseModel):
+    role: str
+    content: str
+    created_at: str
 
 
 class ChatResponse(BaseModel):
     reply: str
 
 
-@router.post("/", response_model=ChatResponse)
-def chat_endpoint(req: ChatRequest):
+def _get_user_id(access_token: str) -> str:
     sb = get_supabase()
     try:
-        user = sb.auth.get_user(req.access_token)
+        user = sb.auth.get_user(access_token)
         if not user.user:
             raise HTTPException(status_code=401, detail="Invalid token")
+        return user.user.id
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
 
-    user_id = user.user.id
 
-    recent = (
+@router.get("/history", response_model=list[ChatMessageOut])
+def get_chat_history(access_token: str):
+    user_id = _get_user_id(access_token)
+    sb = get_supabase()
+
+    result = (
+        sb.table("chat_messages")
+        .select("role,content,created_at")
+        .eq("user_id", user_id)
+        .order("created_at", desc=False)
+        .execute()
+    )
+
+    return result.data
+
+
+@router.post("/", response_model=ChatResponse)
+def chat_endpoint(req: ChatRequest):
+    user_id = _get_user_id(req.access_token)
+    sb = get_supabase()
+
+    recent_messages = (
+        sb.table("chat_messages")
+        .select("role,content")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(MAX_HISTORY_FOR_LLM)
+        .execute()
+    )
+    chat_history = list(reversed(recent_messages.data))
+
+    recent_calcs = (
         sb.table("calculations")
         .select("phenoage,chronological_age,age_difference,biomarkers,defaulted_biomarkers,created_at")
         .eq("user_id", user_id)
@@ -50,9 +82,9 @@ def chat_endpoint(req: ChatRequest):
 
     context_parts = []
 
-    if recent.data:
-        context_parts.append("Recent PhenoAge results (newest first):")
-        for r in recent.data:
+    if recent_calcs.data:
+        context_parts.append("PhenoAge results (newest first):")
+        for r in recent_calcs.data:
             context_parts.append(
                 f"  - Date: {r['created_at']}, PhenoAge: {r['phenoage']}, "
                 f"Age: {r['chronological_age']}, Difference: {r['age_difference']}, "
@@ -62,17 +94,21 @@ def chat_endpoint(req: ChatRequest):
         context_parts.append("No PhenoAge calculations yet.")
 
     if memories:
-        context_parts.append("\nWhat we know about this user:")
+        context_parts.append("\nKnown about this user:")
         for m in memories:
             context_parts.append(f"  - {m}")
 
     health_context = "\n".join(context_parts)
 
-    reply = chat(
-        req.message,
-        health_context,
-        [{"role": m.role, "content": m.content} for m in req.history],
-    )
+    reply = chat(req.message, health_context, chat_history)
+
+    sb.table("chat_messages").insert(
+        {"user_id": user_id, "role": "user", "content": req.message}
+    ).execute()
+
+    sb.table("chat_messages").insert(
+        {"user_id": user_id, "role": "assistant", "content": reply}
+    ).execute()
 
     add_memory(user_id, f"User said: {req.message}")
 
