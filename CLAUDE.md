@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-LEWIF — a longevity/healthspan tool that calculates biological age from blood biomarkers. Portfolio piece and potential startup demo. Python, managed with [uv](https://docs.astral.sh/uv/). Requires Python >= 3.14.
+LEWIF — a longevity/healthspan tool that calculates biological age from blood biomarkers. Portfolio piece and potential startup demo. Monorepo with `backend/` and `frontend/` folders.
 
 ## v1 Scope
 
@@ -32,29 +32,34 @@ POST /chat endpoint. Pulls recent calculations from Supabase + relevant memories
 ## Structure
 
 ```
-app/
-├── main.py              # FastAPI app, router registration
-├── config.py             # Settings via pydantic-settings (.env)
-├── routes/
-│   ├── auth.py           # Auth endpoints (signup, login, logout, delete)
-│   ├── chat.py           # POST /chat (LLM chatbot with memory)
-│   ├── guest.py          # POST /guest/calculate (no auth, no history)
-│   ├── history.py        # GET /history (past calculation results)
-│   ├── phenoage.py       # POST /phenoage/calculate
-│   └── upload.py         # POST /upload/lab-report (PDF/image → PhenoAge)
-└── services/
-    ├── gemini.py         # Gemini Flash: biomarker extraction + chat
-    ├── mem0.py           # Mem0: add/search semantic memories
-    ├── phenoage.py       # PhenoAge formula + unit converter
-    └── supabase.py       # Supabase client (auth + database)
-tests/
-└── test_phenoage.py      # Formula validation against known sources
-main.py                   # uvicorn entry point
+backend/
+├── app/
+│   ├── main.py              # FastAPI app, router registration
+│   ├── config.py             # Settings via pydantic-settings (.env)
+│   ├── routes/
+│   │   ├── auth.py           # Auth endpoints (signup, login, logout, delete)
+│   │   ├── chat.py           # POST /chat (LLM chatbot with memory)
+│   │   ├── guest.py          # POST /guest/calculate (no auth, no history)
+│   │   ├── history.py        # GET /history (past calculation results)
+│   │   ├── phenoage.py       # POST /phenoage/calculate
+│   │   └── upload.py         # POST /upload/lab-report (PDF/image → PhenoAge)
+│   └── services/
+│       ├── gemini.py         # Gemini Flash: biomarker extraction + chat
+│       ├── mem0.py           # Mem0: add/search semantic memories
+│       ├── phenoage.py       # PhenoAge formula + unit converter
+│       └── supabase.py       # Supabase client (auth + database)
+├── tests/
+│   └── test_phenoage.py      # Formula validation against known sources
+├── main.py                   # uvicorn entry point
+└── pyproject.toml
+frontend/                     # (planned)
 ```
 
 ## Commands
 
 ```bash
+# Backend
+cd backend
 uv run python main.py                  # Start dev server (port 8000, auto-reload)
 uv run python -m tests.test_phenoage   # Run PhenoAge validation tests
 uv add <package>                       # Add a dependency
