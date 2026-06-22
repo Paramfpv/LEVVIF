@@ -78,7 +78,11 @@ def chat_endpoint(req: ChatRequest):
         .execute()
     )
 
-    memories = search_memory(user_id, req.message)
+    memories = []
+    try:
+        memories = search_memory(user_id, req.message)
+    except Exception:
+        pass
 
     context_parts = []
 
@@ -100,7 +104,10 @@ def chat_endpoint(req: ChatRequest):
 
     health_context = "\n".join(context_parts)
 
-    reply = chat(req.message, health_context, chat_history)
+    try:
+        reply = chat(req.message, health_context, chat_history)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Chat failed: {e}")
 
     sb.table("chat_messages").insert(
         {"user_id": user_id, "role": "user", "content": req.message}
@@ -110,6 +117,9 @@ def chat_endpoint(req: ChatRequest):
         {"user_id": user_id, "role": "assistant", "content": reply}
     ).execute()
 
-    add_memory(user_id, f"User said: {req.message}")
+    try:
+        add_memory(user_id, f"User said: {req.message}")
+    except Exception:
+        pass
 
     return ChatResponse(reply=reply)

@@ -66,12 +66,13 @@ export default function ChatPage() {
         ...prev,
         { role: "assistant", content: res.reply },
       ]);
-    } catch {
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Something went wrong";
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "Sorry, something went wrong. Please try again.",
+          content: `Sorry, there was an error: ${errorMsg}. Please try again.`,
         },
       ]);
     } finally {
