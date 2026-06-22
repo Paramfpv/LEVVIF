@@ -54,19 +54,42 @@ def extract_biomarkers(files: list[tuple[bytes, str]]) -> dict:
     return json.loads(text)
 
 
-def chat(user_message: str, health_context: str) -> str:
+def chat(
+    user_message: str,
+    health_context: str,
+    chat_history: list[dict] | None = None,
+) -> str:
     client = genai.Client(api_key=settings.gemini_api_key)
 
-    prompt = f"""{CHAT_SYSTEM_PROMPT}
+    system = f"""{CHAT_SYSTEM_PROMPT}
 
 Here is the user's health context:
-{health_context}
+{health_context}"""
 
-User: {user_message}"""
+    contents = []
+
+    if chat_history:
+        for msg in chat_history:
+            contents.append(
+                genai.types.Content(
+                    role="user" if msg["role"] == "user" else "model",
+                    parts=[genai.types.Part.from_text(text=msg["content"])],
+                )
+            )
+
+    contents.append(
+        genai.types.Content(
+            role="user",
+            parts=[genai.types.Part.from_text(text=user_message)],
+        )
+    )
 
     response = client.models.generate_content(
         model="gemini-2.5-flash",
-        contents=prompt,
+        contents=contents,
+        config=genai.types.GenerateContentConfig(
+            system_instruction=system,
+        ),
     )
 
     return response.text

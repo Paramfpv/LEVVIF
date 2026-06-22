@@ -8,9 +8,15 @@ from app.services.supabase import get_supabase
 router = APIRouter()
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
 class ChatRequest(BaseModel):
     access_token: str
     message: str
+    history: list[ChatMessage] = []
 
 
 class ChatResponse(BaseModel):
@@ -62,7 +68,11 @@ def chat_endpoint(req: ChatRequest):
 
     health_context = "\n".join(context_parts)
 
-    reply = chat(req.message, health_context)
+    reply = chat(
+        req.message,
+        health_context,
+        [{"role": m.role, "content": m.content} for m in req.history],
+    )
 
     add_memory(user_id, f"User said: {req.message}")
 
