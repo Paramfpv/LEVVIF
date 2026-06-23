@@ -1,6 +1,7 @@
 import json
 
 from google import genai
+from groq import Groq
 
 from app.config import settings
 
@@ -70,37 +71,27 @@ def chat(
     health_context: str,
     chat_history: list[dict] | None = None,
 ) -> str:
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = Groq(api_key=settings.groq_api_key)
 
-    system = f"""{CHAT_SYSTEM_PROMPT}
+    system_prompt = f"""{CHAT_SYSTEM_PROMPT}
 
 User's health background:
 {health_context}"""
 
-    contents = []
+    messages = [{"role": "system", "content": system_prompt}]
 
     if chat_history:
         for msg in chat_history:
-            contents.append(
-                genai.types.Content(
-                    role="user" if msg["role"] == "user" else "model",
-                    parts=[genai.types.Part.from_text(text=msg["content"])],
-                )
-            )
+            messages.append({
+                "role": msg["role"] if msg["role"] == "user" else "assistant",
+                "content": msg["content"],
+            })
 
-    contents.append(
-        genai.types.Content(
-            role="user",
-            parts=[genai.types.Part.from_text(text=user_message)],
-        )
+    messages.append({"role": "user", "content": user_message})
+
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=messages,
     )
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=contents,
-        config=genai.types.GenerateContentConfig(
-            system_instruction=system,
-        ),
-    )
-
-    return response.text
+    return response.choices[0].message.content
