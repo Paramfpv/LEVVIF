@@ -41,6 +41,8 @@ export default function CalculatePage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<UploadResult | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [analysis, setAnalysis] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -72,6 +74,22 @@ export default function CalculatePage() {
 
       const data: UploadResult = await res.json();
       setResult(data);
+
+      setAnalyzing(true);
+      try {
+        const analyzeRes = await fetch(`${API_URL}/guest/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        if (analyzeRes.ok) {
+          const analyzeData = await analyzeRes.json();
+          setAnalysis(analyzeData.analysis);
+        }
+      } catch {
+      } finally {
+        setAnalyzing(false);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -259,12 +277,35 @@ export default function CalculatePage() {
               </CardContent>
             </Card>
 
+            {/* AI Analysis */}
+            <Card className="border-gold/20 bg-card/80">
+              <CardHeader>
+                <CardTitle className="font-heading text-lg">
+                  Your Analysis
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {analyzing ? (
+                  <p className="text-muted-foreground">Analyzing your results...</p>
+                ) : analysis ? (
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                    {analysis}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">
+                    Analysis unavailable right now. Try again later.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 onClick={() => {
                   setResult(null);
                   setFile(null);
                   setAge("");
+                  setAnalysis("");
                 }}
                 className="bg-gold hover:bg-gold-light text-background font-semibold cursor-pointer"
               >
