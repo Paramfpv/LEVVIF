@@ -13,3 +13,7 @@ node_modules/
 
 # Environment variables
 .env
+
+# AI assistant files
+CLAUDE.md
+AGENTS.md
