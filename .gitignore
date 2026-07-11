@@ -17,3 +17,6 @@ node_modules/
 # AI assistant files
 CLAUDE.md
 AGENTS.md
+
+ml/data/
+.ipynb_checkpoints/
