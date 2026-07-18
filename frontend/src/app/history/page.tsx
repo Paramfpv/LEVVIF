@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Navbar } from "@/components/navbar";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 
@@ -50,8 +49,6 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
-
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-8">
         <h1 className="font-heading text-3xl sm:text-4xl font-bold mb-8">
           Your <span className="text-gold">History</span>

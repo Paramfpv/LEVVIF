@@ -3,9 +3,21 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion, type Variants } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { HUDCorners } from "@/components/hud-corners";
 import { useAuth } from "@/lib/auth";
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 22 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: "easeOut" } },
+};
+
+const stagger: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.1 } },
+};
 
 export default function Home() {
   const { isLoggedIn, isLoading } = useAuth();
@@ -31,47 +43,42 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Navbar */}
-      <nav className="border-b border-gold/10 bg-background/80 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-          <span className="font-heading text-2xl font-bold text-gold">LEWIF</span>
-          <div className="flex items-center gap-4">
-            <Link href="#how-it-works" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">
-              How It Works
-            </Link>
-            <Link href="#features" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Features
-            </Link>
-            <Link href="/about" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">
-              About
-            </Link>
-            <Button
-              onClick={() => router.push("/login")}
-              variant="outline"
-              className="border-gold/30 hover:bg-gold/10 text-sm cursor-pointer"
-            >
-              Sign In
-            </Button>
-          </div>
-        </div>
-      </nav>
-
       {/* Hero */}
       <section className="flex-1 flex items-center justify-center px-4 py-20 sm:py-32">
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-gold/80 text-sm font-medium tracking-widest uppercase mb-4">
-            Biological Age Calculator
-          </p>
-          <h1 className="font-heading text-5xl sm:text-7xl font-bold leading-tight tracking-tight">
+        <motion.div
+          className="max-w-3xl mx-auto text-center"
+          variants={stagger}
+          initial="hidden"
+          animate="show"
+        >
+          <motion.p
+            variants={fadeUp}
+            className="hud-label mb-5"
+          >
+            Biological Age Calculator · PhenoAge Protocol
+          </motion.p>
+
+          <motion.h1
+            variants={fadeUp}
+            className="font-heading text-5xl sm:text-7xl font-bold leading-tight tracking-tight"
+          >
             Know your{" "}
             <span className="text-gold">true age</span>
-          </h1>
-          <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          </motion.h1>
+
+          <motion.p
+            variants={fadeUp}
+            className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+          >
             Your birth certificate tells one story. Your blood tells another.
             LEWIF calculates your biological age from standard blood biomarkers
-            using the clinically validated PhenoAge formula.
-          </p>
-          <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+            using the clinically validated Levine PhenoAge formula.
+          </motion.p>
+
+          <motion.div
+            variants={fadeUp}
+            className="mt-10 flex flex-col sm:flex-row gap-4 justify-center"
+          >
             <Button
               onClick={() => router.push("/calculate")}
               className="bg-gold hover:bg-gold-light text-background font-semibold text-base px-8 py-6 cursor-pointer"
@@ -85,51 +92,63 @@ export default function Home() {
             >
               Create Account
             </Button>
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground/60">
+          </motion.div>
+
+          <motion.p variants={fadeUp} className="mt-4 text-sm text-muted-foreground/50">
             Upload a lab report. Get your biological age in seconds.
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
       </section>
 
       {/* Social proof bar */}
-      <section className="border-y border-gold/10 py-8">
+      <motion.section
+        className="border-y border-gold/10 py-8"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+      >
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
-            <div>
-              <p className="font-heading text-3xl font-bold text-gold">9</p>
-              <p className="text-sm text-muted-foreground mt-1">Blood Biomarkers</p>
-            </div>
-            <div>
-              <p className="font-heading text-3xl font-bold text-gold">2018</p>
-              <p className="text-sm text-muted-foreground mt-1">Levine PhenoAge Study</p>
-            </div>
-            <div>
-              <p className="font-heading text-3xl font-bold text-gold">AI</p>
-              <p className="text-sm text-muted-foreground mt-1">Powered Report Reading</p>
-            </div>
-            <div>
-              <p className="font-heading text-3xl font-bold text-gold">Free</p>
-              <p className="text-sm text-muted-foreground mt-1">To Get Started</p>
-            </div>
+            {[
+              { value: "9", label: "Blood Biomarkers" },
+              { value: "2018", label: "Levine PhenoAge Study" },
+              { value: "AI", label: "Powered Report Reading" },
+              { value: "Free", label: "To Get Started" },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <p className="font-mono text-3xl font-bold text-gold">{stat.value}</p>
+                <p className="text-sm text-muted-foreground mt-1">{stat.label}</p>
+              </div>
+            ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* How It Works */}
       <section id="how-it-works" className="py-20 sm:py-28 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-gold/80 text-sm font-medium tracking-widest uppercase mb-3">
-              Simple Process
-            </p>
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <p className="hud-label mb-4">Protocol</p>
             <h2 className="font-heading text-3xl sm:text-5xl font-bold">
               Three steps to your{" "}
               <span className="text-gold">biological age</span>
             </h2>
-          </div>
+          </motion.div>
 
-          <div className="grid sm:grid-cols-3 gap-8">
+          <motion.div
+            className="grid sm:grid-cols-3 gap-8"
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+          >
             {[
               {
                 step: "01",
@@ -150,38 +169,51 @@ export default function Home() {
                   "Chat with your personal health advisor to understand your results and get actionable recommendations.",
               },
             ].map((item) => (
-              <Card key={item.step} className="border-gold/10 bg-card/60">
-                <CardContent className="pt-8 pb-6">
-                  <span className="font-heading text-5xl font-bold text-gold/20">
-                    {item.step}
-                  </span>
-                  <h3 className="font-heading text-xl font-semibold mt-4 mb-3">
-                    {item.title}
-                  </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {item.description}
-                  </p>
-                </CardContent>
-              </Card>
+              <motion.div key={item.step} variants={fadeUp}>
+                <Card className="hud-glow border-gold/10 bg-card/60 relative overflow-hidden h-full">
+                  <HUDCorners />
+                  <CardContent className="pt-8 pb-6">
+                    <span className="font-mono text-5xl font-bold text-gold/15">
+                      {item.step}
+                    </span>
+                    <h3 className="font-heading text-xl font-semibold mt-4 mb-3">
+                      {item.title}
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {item.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Features */}
-      <section id="features" className="py-20 sm:py-28 px-4 bg-card/30">
+      <section id="features" className="py-20 sm:py-28 px-4 bg-card/20">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-gold/80 text-sm font-medium tracking-widest uppercase mb-3">
-              Features
-            </p>
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <p className="hud-label mb-4">Capabilities</p>
             <h2 className="font-heading text-3xl sm:text-5xl font-bold">
               More than a{" "}
               <span className="text-gold">calculator</span>
             </h2>
-          </div>
+          </motion.div>
 
-          <div className="grid sm:grid-cols-2 gap-6">
+          <motion.div
+            className="grid sm:grid-cols-2 gap-6"
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+          >
             {[
               {
                 title: "AI-Powered Report Reading",
@@ -204,24 +236,33 @@ export default function Home() {
                   "Built on the Levine 2018 PhenoAge formula — published research using NHANES data, not a proprietary black box.",
               },
             ].map((feature) => (
-              <Card key={feature.title} className="border-gold/10 bg-card/60">
-                <CardContent className="pt-6 pb-6">
-                  <h3 className="font-heading text-lg font-semibold mb-2">
-                    {feature.title}
-                  </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {feature.description}
-                  </p>
-                </CardContent>
-              </Card>
+              <motion.div key={feature.title} variants={fadeUp}>
+                <Card className="hud-glow border-gold/10 bg-card/60 relative overflow-hidden h-full">
+                  <HUDCorners />
+                  <CardContent className="pt-6 pb-6">
+                    <h3 className="font-heading text-lg font-semibold mb-2">
+                      {feature.title}
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* CTA */}
       <section className="py-20 sm:py-28 px-4">
-        <div className="max-w-2xl mx-auto text-center">
+        <motion.div
+          className="max-w-2xl mx-auto text-center"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.55 }}
+        >
           <h2 className="font-heading text-3xl sm:text-5xl font-bold mb-6">
             Ready to know your{" "}
             <span className="text-gold">true age</span>?
@@ -245,7 +286,7 @@ export default function Home() {
               Create Account
             </Button>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Footer */}

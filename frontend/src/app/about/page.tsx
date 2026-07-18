@@ -11,27 +11,6 @@ export default function AboutPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Navbar */}
-      <nav className="border-b border-gold/10 bg-background/80 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-          <Link href="/" className="font-heading text-2xl font-bold text-gold">
-            LEWIF
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Home
-            </Link>
-            <Button
-              onClick={() => router.push("/login")}
-              variant="outline"
-              className="border-gold/30 hover:bg-gold/10 text-sm cursor-pointer"
-            >
-              Sign In
-            </Button>
-          </div>
-        </div>
-      </nav>
-
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-16 sm:py-24">
         {/* Hero */}
         <div className="mb-16">

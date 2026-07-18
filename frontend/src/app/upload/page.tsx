@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Navbar } from "@/components/navbar";
 import { useAuth } from "@/lib/auth";
 
 const API_URL =
@@ -192,8 +191,6 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
-
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-8">
         <h1 className="font-heading text-3xl sm:text-4xl font-bold mb-8">
           Upload <span className="text-gold">Lab Report</span>

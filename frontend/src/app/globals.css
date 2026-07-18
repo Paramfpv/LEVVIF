@@ -10,6 +10,7 @@
   --color-gold: #C9A96E;
   --color-gold-light: #D4BA85;
   --color-gold-dark: #A8894F;
+  --color-teal: #4DD9AC;
   --font-sans: var(--font-inter);
   --font-serif: var(--font-playfair);
   --font-mono: var(--font-geist-mono);
@@ -55,35 +56,35 @@
 :root {
   --background: #0A0A0F;
   --foreground: #E8E4DD;
-  --card: #14141B;
+  --card: #0F0F16;
   --card-foreground: #E8E4DD;
-  --popover: #14141B;
+  --popover: #0F0F16;
   --popover-foreground: #E8E4DD;
   --primary: #C9A96E;
   --primary-foreground: #0A0A0F;
-  --secondary: #1E1E28;
+  --secondary: #1A1A24;
   --secondary-foreground: #E8E4DD;
-  --muted: #1E1E28;
-  --muted-foreground: #8A8A95;
-  --accent: #1E1E28;
+  --muted: #1A1A24;
+  --muted-foreground: #7A7A8A;
+  --accent: #1A1A24;
   --accent-foreground: #E8E4DD;
   --destructive: #F87171;
-  --border: rgba(201, 169, 110, 0.15);
-  --input: rgba(201, 169, 110, 0.15);
+  --border: rgba(201, 169, 110, 0.12);
+  --input: rgba(201, 169, 110, 0.12);
   --ring: #C9A96E;
   --chart-1: #C9A96E;
   --chart-2: #4ADE80;
   --chart-3: #60A5FA;
   --chart-4: #F87171;
   --chart-5: #A78BFA;
-  --radius: 0.625rem;
-  --sidebar: #14141B;
+  --radius: 0.5rem;
+  --sidebar: #0F0F16;
   --sidebar-foreground: #E8E4DD;
   --sidebar-primary: #C9A96E;
   --sidebar-primary-foreground: #0A0A0F;
-  --sidebar-accent: #1E1E28;
+  --sidebar-accent: #1A1A24;
   --sidebar-accent-foreground: #E8E4DD;
-  --sidebar-border: rgba(201, 169, 110, 0.15);
+  --sidebar-border: rgba(201, 169, 110, 0.12);
   --sidebar-ring: #C9A96E;
 }
 
@@ -93,8 +94,38 @@
   }
   body {
     @apply bg-background text-foreground;
+    position: relative;
+  }
+  /* Subtle dot grid — Gattaca engineering / HUD feel */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle, rgba(201, 169, 110, 0.045) 1px, transparent 1px);
+    background-size: 28px 28px;
   }
   html {
     @apply font-sans;
   }
+}
+
+/* HUD card hover — amber edge glow on hover */
+.hud-glow {
+  transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+}
+.hud-glow:hover {
+  border-color: rgba(201, 169, 110, 0.32) !important;
+  box-shadow: 0 0 22px rgba(201, 169, 110, 0.09), 0 6px 20px rgba(0, 0, 0, 0.35);
+  transform: translateY(-2px);
+}
+
+/* HUD label style — used for "PHENOTYPIC AGE" style readout labels */
+.hud-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(201, 169, 110, 0.55);
 }

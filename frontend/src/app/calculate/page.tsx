@@ -2,11 +2,13 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { HUDCorners } from "@/components/hud-corners";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://levvif.onrender.com";
@@ -242,28 +244,28 @@ export default function CalculatePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <nav className="border-b border-gold/10 bg-card/60 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
-          <span className="font-heading text-xl font-bold text-gold">LEWIF</span>
-          <button
-            onClick={() => router.push("/login")}
-            className="text-sm text-muted-foreground hover:text-gold transition-colors cursor-pointer"
-          >
-            Sign in for full features →
-          </button>
-        </div>
-      </nav>
-
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-8">
-        <h1 className="font-heading text-3xl sm:text-4xl font-bold mb-2">
-          Try <span className="text-gold">LEWIF</span>
-        </h1>
-        <p className="text-muted-foreground mb-8">
-          Upload your lab report and discover your biological age. No account needed.
-        </p>
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <p className="hud-label mb-2">Phenotypic Age Protocol</p>
+          <h1 className="font-heading text-3xl sm:text-4xl font-bold mb-2">
+            Try <span className="text-gold">LEWIF</span>
+          </h1>
+          <p className="text-muted-foreground mb-8">
+            Upload your lab report and discover your biological age. No account needed.
+          </p>
+        </motion.div>
 
         {!result ? (
-          <div className="space-y-6">
+          <motion.div
+            className="space-y-6"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          >
             <div
               onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
               onDragLeave={() => setDragActive(false)}
@@ -337,40 +339,58 @@ export default function CalculatePage() {
             <p className="text-xs text-muted-foreground">
               No lab report? Sample data uses realistic biomarker values for a 30-year-old so you can explore the full flow including the ML CRP estimator.
             </p>
-          </div>
+          </motion.div>
         ) : (
-          <div className="space-y-6">
+          <motion.div
+            className="space-y-6"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
             {/* Result cards */}
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Card className="border-gold/20 bg-card/80">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground font-normal">PhenoAge</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="font-heading text-4xl font-bold text-gold">{result.phenoage}</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-gold/20 bg-card/80">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground font-normal">Chronological Age</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="font-heading text-4xl font-bold">{result.chronological_age}</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-gold/20 bg-card/80">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground font-normal">Difference</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className={`font-heading text-4xl font-bold ${result.age_difference < 0 ? "text-green-400" : "text-red-400"}`}>
-                    {result.age_difference > 0 ? "+" : ""}{result.age_difference} yrs
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+            <motion.div
+              className="grid gap-4 sm:grid-cols-3"
+              initial="hidden"
+              animate="show"
+              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1 } } }}
+            >
+              {[
+                {
+                  label: "Phenotypic Age",
+                  value: <span className="text-gold">{result.phenoage}</span>,
+                },
+                {
+                  label: "Chronological Age",
+                  value: result.chronological_age,
+                },
+                {
+                  label: "Difference",
+                  value: (
+                    <span className={result.age_difference < 0 ? "text-teal" : "text-red-400"}>
+                      {result.age_difference > 0 ? "+" : ""}{result.age_difference} yrs
+                    </span>
+                  ),
+                },
+              ].map(({ label, value }) => (
+                <motion.div
+                  key={label}
+                  variants={{
+                    hidden: { opacity: 0, y: 16 },
+                    show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+                  }}
+                >
+                  <Card className="hud-glow border-gold/20 bg-card/80 relative overflow-hidden">
+                    <HUDCorners />
+                    <CardHeader className="pb-2">
+                      <CardTitle className="hud-label">{label}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="font-mono text-4xl font-bold">{value}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </motion.div>
 
             {/* CRP ML notice */}
             {crpWasDefaulted && !crpWasPredicted && (
@@ -394,7 +414,16 @@ export default function CalculatePage() {
                     </Button>
                   </div>
 
+                  <AnimatePresence>
                   {showLifestyleForm && (
+                    <motion.div
+                      key="lifestyle"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.35, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
                     <div className="mt-6 space-y-5 border-t border-amber-500/20 pt-5">
                       <p className="text-sm text-muted-foreground">
                         Our XGBoost model (trained on 26,000 NHANES records) will estimate
@@ -534,7 +563,9 @@ export default function CalculatePage() {
                         {refining ? "Calculating..." : "Recalculate with my data"}
                       </Button>
                     </div>
+                    </motion.div>
                   )}
+                  </AnimatePresence>
                 </CardContent>
               </Card>
             )}
@@ -598,7 +629,7 @@ export default function CalculatePage() {
                 Sign up for chat & history →
               </Button>
             </div>
-          </div>
+          </motion.div>
         )}
       </main>
     </div>

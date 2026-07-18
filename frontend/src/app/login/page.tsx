@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HUDCorners } from "@/components/hud-corners";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 
@@ -70,8 +72,14 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+      <motion.div
+        className="w-full max-w-md"
+        initial={{ opacity: 0, y: 22 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="text-center mb-8">
+          <p className="hud-label mb-3">Identity Verification</p>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold tracking-tight text-gold">
             LEWIF
           </h1>
@@ -80,7 +88,8 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <Card className="border-gold/20 bg-card/80 backdrop-blur">
+        <Card className="hud-glow border-gold/20 bg-card/80 backdrop-blur relative overflow-hidden">
+          <HUDCorners />
           <CardHeader className="text-center pb-2">
             <h2 className="font-heading text-xl font-semibold">
               {isSignUp ? "Create your account" : "Welcome back"}
@@ -157,7 +166,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
     </div>
   );
 }
