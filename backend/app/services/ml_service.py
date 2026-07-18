@@ -29,7 +29,7 @@ def predict_crp(
     response = httpx.post(
         f"{settings.ml_service_url}/predict/crp",
         json=payload,
-        timeout=30,
+        timeout=90,
     )
     response.raise_for_status()
     return response.json()["crp_mg_per_l"]
