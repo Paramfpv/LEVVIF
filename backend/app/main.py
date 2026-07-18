@@ -1,9 +1,33 @@
+import asyncio
+from contextlib import asynccontextmanager
+
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
 from app.routes import auth, chat, guest, history, phenoage, upload
 
-app = FastAPI(title="LEWIF", version="0.1.0")
+
+async def _keep_ml_service_alive():
+    """Ping the ML service every 10 minutes so it never cold-starts."""
+    await asyncio.sleep(10)  # small delay to let the app finish starting
+    while True:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                await client.get(f"{settings.ml_service_url}/")
+        except Exception:
+            pass
+        await asyncio.sleep(600)  # 10 minutes
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    asyncio.create_task(_keep_ml_service_alive())
+    yield
+
+
+app = FastAPI(title="LEWIF", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
