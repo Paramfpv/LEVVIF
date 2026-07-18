@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     mem0_api_key: str = ""
     groq_api_key: str = ""
+    ml_service_url: str = "https://lewif-ml-service.onrender.com"
 
     model_config = {"env_file": ".env"}
 

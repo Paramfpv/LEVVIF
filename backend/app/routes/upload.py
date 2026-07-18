@@ -1,10 +1,11 @@
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.services.gemini import extract_biomarkers
 from app.services.mem0 import add_memory
+from app.services.ml_service import predict_crp
 from app.services.phenoage import calculate_phenoage, convert_us_to_si
 from app.services.supabase import get_supabase
 
@@ -34,6 +35,33 @@ class UploadResponse(BaseModel):
     phenoage: float
     chronological_age: float
     age_difference: float
+    extracted_biomarkers: dict
+    defaulted_biomarkers: list[str]
+
+
+class LifestyleData(BaseModel):
+    female: int = Field(..., ge=0, le=1)
+    bmi: float = Field(..., ge=10, le=80)
+    ever_smoked: int = Field(..., ge=0, le=1)
+    sleep_hours: float = Field(..., ge=0, le=24)
+    trouble_sleeping: int = Field(..., ge=0, le=1)
+    vigorous_work: int = Field(..., ge=0, le=1)
+    vigorous_recreation: int = Field(..., ge=0, le=1)
+    sedentary_minutes: float = Field(..., ge=0, le=1440)
+    ever_drinks: int = Field(..., ge=0, le=1)
+
+
+class RefineCRPRequest(BaseModel):
+    biomarkers: dict
+    lifestyle: LifestyleData
+    access_token: str | None = None
+
+
+class RefineCRPResponse(BaseModel):
+    phenoage: float
+    chronological_age: float
+    age_difference: float
+    crp_predicted: float
     extracted_biomarkers: dict
     defaulted_biomarkers: list[str]
 
@@ -132,6 +160,91 @@ async def upload_lab_report(
                 memory_text += f"Missing from report: {', '.join(defaulted)}. "
 
             add_memory(user_id, memory_text)
+        except Exception:
+            pass
+
+    return result
+
+
+@router.post("/refine-crp", response_model=RefineCRPResponse)
+def refine_crp(req: RefineCRPRequest):
+    """Recalculate PhenoAge using ML-predicted CRP from lifestyle data.
+
+    Call this after /lab-report when CRP was defaulted. Provide the
+    biomarkers dict from the previous response plus lifestyle fields.
+    """
+    biomarkers = dict(req.biomarkers)
+    ls = req.lifestyle
+
+    try:
+        crp_predicted = predict_crp(
+            age=biomarkers["age"],
+            female=ls.female,
+            bmi=ls.bmi,
+            ever_smoked=ls.ever_smoked,
+            sleep_hours=ls.sleep_hours,
+            trouble_sleeping=ls.trouble_sleeping,
+            vigorous_work=ls.vigorous_work,
+            vigorous_recreation=ls.vigorous_recreation,
+            sedentary_minutes=ls.sedentary_minutes,
+            ever_drinks=ls.ever_drinks,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"ML service unavailable: {e}")
+
+    biomarkers["crp"] = crp_predicted
+
+    defaulted = [
+        k for k, v in POPULATION_DEFAULTS.items()
+        if biomarkers.get(k) == v and k != "crp"
+    ]
+
+    alb, cre, glu, crp_si = convert_us_to_si(
+        biomarkers["albumin"],
+        biomarkers["creatinine"],
+        biomarkers["glucose"],
+        crp_predicted,
+    )
+
+    phenoage = calculate_phenoage(
+        albumin=alb,
+        creatinine=cre,
+        glucose=glu,
+        crp=crp_si,
+        lymphocyte_percent=biomarkers["lymphocyte_percent"],
+        mcv=biomarkers["mcv"],
+        rdw=biomarkers["rdw"],
+        alkaline_phosphatase=biomarkers["alkaline_phosphatase"],
+        wbc=biomarkers["wbc"],
+        age=biomarkers["age"],
+    )
+
+    result = RefineCRPResponse(
+        phenoage=round(phenoage, 2),
+        chronological_age=biomarkers["age"],
+        age_difference=round(phenoage - biomarkers["age"], 2),
+        crp_predicted=round(crp_predicted, 2),
+        extracted_biomarkers=biomarkers,
+        defaulted_biomarkers=defaulted,
+    )
+
+    if req.access_token:
+        try:
+            sb = get_supabase()
+            user = sb.auth.get_user(req.access_token)
+            user_id = user.user.id
+            sb.table("calculations").insert({
+                "user_id": user_id,
+                "biomarkers": biomarkers,
+                "phenoage": result.phenoage,
+                "chronological_age": result.chronological_age,
+                "age_difference": result.age_difference,
+                "defaulted_biomarkers": defaulted,
+            }).execute()
+            add_memory(user_id, (
+                f"PhenoAge refined with ML-predicted CRP ({crp_predicted:.2f} mg/L): "
+                f"{result.phenoage} (chronological {result.chronological_age})."
+            ))
         except Exception:
             pass
 
