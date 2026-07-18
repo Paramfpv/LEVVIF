@@ -11,6 +11,19 @@ import { Badge } from "@/components/ui/badge";
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://levvif.onrender.com";
 
+const DEMO_BIOMARKERS = {
+  albumin: 4.2,
+  creatinine: 0.95,
+  glucose: 88.0,
+  crp: 2.0,
+  lymphocyte_percent: 32.0,
+  mcv: 89.0,
+  rdw: 13.1,
+  alkaline_phosphatase: 67.0,
+  wbc: 6.3,
+  age: 30,
+};
+
 interface UploadResult {
   phenoage: number;
   chronological_age: number;
@@ -22,7 +35,8 @@ interface UploadResult {
 
 interface LifestyleForm {
   female: string;
-  bmi: string;
+  height_cm: string;
+  weight_kg: string;
   ever_smoked: string;
   sleep_hours: string;
   trouble_sleeping: string;
@@ -34,7 +48,8 @@ interface LifestyleForm {
 
 const DEFAULT_LIFESTYLE: LifestyleForm = {
   female: "",
-  bmi: "",
+  height_cm: "",
+  weight_kg: "",
   ever_smoked: "",
   sleep_hours: "",
   trouble_sleeping: "",
@@ -56,6 +71,13 @@ const BIOMARKER_LABELS: Record<string, string> = {
   wbc: "WBC (×10³/µL)",
   age: "Age (years)",
 };
+
+function calcBMI(height_cm: string, weight_kg: string): number | null {
+  const h = parseFloat(height_cm);
+  const w = parseFloat(weight_kg);
+  if (!h || !w || h < 50 || h > 250 || w < 20 || w > 300) return null;
+  return Math.round((w / Math.pow(h / 100, 2)) * 10) / 10;
+}
 
 export default function CalculatePage() {
   const router = useRouter();
@@ -84,6 +106,22 @@ export default function CalculatePage() {
     setLifestyle((prev) => ({ ...prev, [field]: value }));
   }
 
+  async function runAnalysis(data: UploadResult) {
+    setAnalyzing(true);
+    setAnalysis("");
+    try {
+      const res = await fetch(`${API_URL}/guest/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) setAnalysis((await res.json()).analysis);
+    } catch {
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   async function handleUpload() {
     if (!file) return;
     setLoading(true);
@@ -102,30 +140,43 @@ export default function CalculatePage() {
         method: "POST",
         body: formData,
       });
-
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }));
         throw new Error(err.detail || "Upload failed");
       }
-
       const data: UploadResult = await res.json();
       setResult(data);
+      runAnalysis(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-      setAnalyzing(true);
-      try {
-        const analyzeRes = await fetch(`${API_URL}/guest/analyze`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (analyzeRes.ok) {
-          const analyzeData = await analyzeRes.json();
-          setAnalysis(analyzeData.analysis);
-        }
-      } catch {
-      } finally {
-        setAnalyzing(false);
-      }
+  async function handleDemo() {
+    setLoading(true);
+    setError("");
+    setResult(null);
+    setAnalysis("");
+    setShowLifestyleForm(false);
+    setLifestyle(DEFAULT_LIFESTYLE);
+
+    try {
+      const res = await fetch(`${API_URL}/guest/calculate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(DEMO_BIOMARKERS),
+      });
+      if (!res.ok) throw new Error("Demo calculation failed");
+      const calc = await res.json();
+      const data: UploadResult = {
+        ...calc,
+        extracted_biomarkers: DEMO_BIOMARKERS,
+        defaulted_biomarkers: ["crp", "albumin", "alkaline_phosphatase"],
+      };
+      setResult(data);
+      runAnalysis(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -136,9 +187,10 @@ export default function CalculatePage() {
   async function handleRefine() {
     if (!result) return;
     const ls = lifestyle;
+    const bmi = calcBMI(ls.height_cm, ls.weight_kg);
 
     if (
-      ls.female === "" || ls.bmi === "" || ls.ever_smoked === "" ||
+      ls.female === "" || !bmi || ls.ever_smoked === "" ||
       ls.sleep_hours === "" || ls.trouble_sleeping === "" ||
       ls.vigorous_work === "" || ls.vigorous_recreation === "" ||
       ls.sedentary_hours === "" || ls.ever_drinks === ""
@@ -158,7 +210,7 @@ export default function CalculatePage() {
           biomarkers: result.extracted_biomarkers,
           lifestyle: {
             female: parseInt(ls.female),
-            bmi: parseFloat(ls.bmi),
+            bmi,
             ever_smoked: parseInt(ls.ever_smoked),
             sleep_hours: parseFloat(ls.sleep_hours),
             trouble_sleeping: parseInt(ls.trouble_sleeping),
@@ -169,33 +221,14 @@ export default function CalculatePage() {
           },
         }),
       });
-
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }));
         throw new Error(err.detail || "Refinement failed");
       }
-
       const data: UploadResult = await res.json();
       setResult(data);
       setShowLifestyleForm(false);
-
-      // Re-run analysis with updated result
-      setAnalyzing(true);
-      setAnalysis("");
-      try {
-        const analyzeRes = await fetch(`${API_URL}/guest/analyze`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (analyzeRes.ok) {
-          const analyzeData = await analyzeRes.json();
-          setAnalysis(analyzeData.analysis);
-        }
-      } catch {
-      } finally {
-        setAnalyzing(false);
-      }
+      runAnalysis(data);
     } catch (err) {
       setRefineError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -205,6 +238,7 @@ export default function CalculatePage() {
 
   const crpWasDefaulted = result?.defaulted_biomarkers.includes("crp");
   const crpWasPredicted = result?.crp_predicted !== undefined;
+  const bmi = calcBMI(lifestyle.height_cm, lifestyle.weight_kg);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -236,11 +270,9 @@ export default function CalculatePage() {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
-                dragActive
-                  ? "border-gold bg-gold/5"
-                  : file
-                    ? "border-gold/40 bg-gold/5"
-                    : "border-gold/20 hover:border-gold/40"
+                dragActive ? "border-gold bg-gold/5"
+                  : file ? "border-gold/40 bg-gold/5"
+                  : "border-gold/20 hover:border-gold/40"
               }`}
             >
               <input
@@ -259,22 +291,15 @@ export default function CalculatePage() {
                 </div>
               ) : (
                 <div>
-                  <p className="text-muted-foreground">
-                    Drop your lab report here, or click to browse
-                  </p>
-                  <p className="text-sm text-muted-foreground/60 mt-2">
-                    PDF, PNG, JPEG, or WebP
-                  </p>
+                  <p className="text-muted-foreground">Drop your lab report here, or click to browse</p>
+                  <p className="text-sm text-muted-foreground/60 mt-2">PDF, PNG, JPEG, or WebP</p>
                 </div>
               )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="age">
-                Age{" "}
-                <span className="text-muted-foreground font-normal">
-                  (optional if found in report)
-                </span>
+                Age <span className="text-muted-foreground font-normal">(optional if found in report)</span>
               </Label>
               <Input
                 id="age"
@@ -288,13 +313,30 @@ export default function CalculatePage() {
 
             {error && <p className="text-destructive text-sm">{error}</p>}
 
-            <Button
-              onClick={handleUpload}
-              disabled={!file || loading}
-              className="bg-gold hover:bg-gold-light text-background font-semibold cursor-pointer"
-            >
-              {loading ? "Analyzing report..." : "Calculate PhenoAge"}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <Button
+                onClick={handleUpload}
+                disabled={!file || loading}
+                className="bg-gold hover:bg-gold-light text-background font-semibold cursor-pointer"
+              >
+                {loading ? "Analyzing..." : "Calculate PhenoAge"}
+              </Button>
+
+              <span className="text-muted-foreground text-sm">or</span>
+
+              <Button
+                onClick={handleDemo}
+                disabled={loading}
+                variant="outline"
+                className="border-gold/30 hover:bg-gold/10 cursor-pointer text-sm"
+              >
+                {loading ? "Loading..." : "Try with sample data →"}
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              No lab report? Sample data uses realistic biomarker values for a 30-year-old so you can explore the full flow including the ML CRP estimator.
+            </p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -330,7 +372,7 @@ export default function CalculatePage() {
               </Card>
             </div>
 
-            {/* CRP ML notice — shown when CRP was defaulted and not yet predicted */}
+            {/* CRP ML notice */}
             {crpWasDefaulted && !crpWasPredicted && (
               <Card className="border-amber-500/30 bg-amber-500/5">
                 <CardContent className="pt-5">
@@ -365,58 +407,58 @@ export default function CalculatePage() {
                           <Label>Sex</Label>
                           <div className="flex gap-3">
                             {[["0", "Male"], ["1", "Female"]].map(([val, label]) => (
-                              <button
-                                key={val}
-                                onClick={() => setLS("female", val)}
-                                className={`flex-1 py-2 rounded-lg border text-sm transition-colors cursor-pointer ${
-                                  lifestyle.female === val
-                                    ? "border-gold bg-gold/10 text-gold"
-                                    : "border-gold/20 text-muted-foreground hover:border-gold/40"
-                                }`}
-                              >
+                              <button key={val} onClick={() => setLS("female", val)}
+                                className={`flex-1 py-2 rounded-lg border text-sm transition-colors cursor-pointer ${lifestyle.female === val ? "border-gold bg-gold/10 text-gold" : "border-gold/20 text-muted-foreground hover:border-gold/40"}`}>
                                 {label}
                               </button>
                             ))}
                           </div>
                         </div>
 
-                        {/* BMI */}
+                        {/* Height + Weight → BMI */}
                         <div className="space-y-2">
-                          <Label htmlFor="bmi">BMI (kg/m²)</Label>
-                          <Input
-                            id="bmi"
-                            type="number"
-                            placeholder="e.g. 24.5"
-                            value={lifestyle.bmi}
-                            onChange={(e) => setLS("bmi", e.target.value)}
-                            className="bg-background/50 border-gold/20 focus:border-gold"
-                          />
+                          <Label>Height & Weight</Label>
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <Input
+                                type="number"
+                                placeholder="Height (cm)"
+                                value={lifestyle.height_cm}
+                                onChange={(e) => setLS("height_cm", e.target.value)}
+                                className="bg-background/50 border-gold/20 focus:border-gold"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <Input
+                                type="number"
+                                placeholder="Weight (kg)"
+                                value={lifestyle.weight_kg}
+                                onChange={(e) => setLS("weight_kg", e.target.value)}
+                                className="bg-background/50 border-gold/20 focus:border-gold"
+                              />
+                            </div>
+                          </div>
+                          {bmi && (
+                            <p className="text-xs text-gold">BMI: {bmi}</p>
+                          )}
                         </div>
 
                         {/* Sleep */}
                         <div className="space-y-2">
                           <Label htmlFor="sleep">Sleep hours per night</Label>
-                          <Input
-                            id="sleep"
-                            type="number"
-                            placeholder="e.g. 7"
+                          <Input id="sleep" type="number" placeholder="e.g. 7"
                             value={lifestyle.sleep_hours}
                             onChange={(e) => setLS("sleep_hours", e.target.value)}
-                            className="bg-background/50 border-gold/20 focus:border-gold"
-                          />
+                            className="bg-background/50 border-gold/20 focus:border-gold" />
                         </div>
 
                         {/* Sedentary */}
                         <div className="space-y-2">
                           <Label htmlFor="sedentary">Sedentary hours per day</Label>
-                          <Input
-                            id="sedentary"
-                            type="number"
-                            placeholder="e.g. 5"
+                          <Input id="sedentary" type="number" placeholder="e.g. 5"
                             value={lifestyle.sedentary_hours}
                             onChange={(e) => setLS("sedentary_hours", e.target.value)}
-                            className="bg-background/50 border-gold/20 focus:border-gold"
-                          />
+                            className="bg-background/50 border-gold/20 focus:border-gold" />
                         </div>
 
                         {/* Smoked */}
@@ -487,11 +529,8 @@ export default function CalculatePage() {
 
                       {refineError && <p className="text-destructive text-sm">{refineError}</p>}
 
-                      <Button
-                        onClick={handleRefine}
-                        disabled={refining}
-                        className="bg-gold hover:bg-gold-light text-background font-semibold cursor-pointer"
-                      >
+                      <Button onClick={handleRefine} disabled={refining}
+                        className="bg-gold hover:bg-gold-light text-background font-semibold cursor-pointer">
                         {refining ? "Calculating..." : "Recalculate with my data"}
                       </Button>
                     </div>
@@ -500,13 +539,10 @@ export default function CalculatePage() {
               </Card>
             )}
 
-            {/* ML predicted CRP confirmation */}
             {crpWasPredicted && (
               <div className="flex items-center gap-2 text-sm text-green-400">
                 <span>✓</span>
-                <span>
-                  CRP estimated by ML model: <strong>{result.crp_predicted} mg/L</strong> — result updated
-                </span>
+                <span>CRP estimated by ML model: <strong>{result.crp_predicted} mg/L</strong> — result updated</span>
               </div>
             )}
 
@@ -519,22 +555,14 @@ export default function CalculatePage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {Object.entries(result.extracted_biomarkers).map(([key, value]) => (
                     <div key={key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-background/50">
-                      <span className="text-sm text-muted-foreground">
-                        {BIOMARKER_LABELS[key] || key}
-                      </span>
+                      <span className="text-sm text-muted-foreground">{BIOMARKER_LABELS[key] || key}</span>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          {typeof value === "number" ? value.toFixed(2) : value}
-                        </span>
+                        <span className="font-medium">{typeof value === "number" ? value.toFixed(2) : value}</span>
                         {result.defaulted_biomarkers.includes(key) && (
-                          <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-400">
-                            default
-                          </Badge>
+                          <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-400">default</Badge>
                         )}
                         {key === "crp" && crpWasPredicted && (
-                          <Badge variant="outline" className="text-xs border-green-500/40 text-green-400">
-                            ML estimate
-                          </Badge>
+                          <Badge variant="outline" className="text-xs border-green-500/40 text-green-400">ML estimate</Badge>
                         )}
                       </div>
                     </div>
@@ -561,23 +589,12 @@ export default function CalculatePage() {
 
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
-                onClick={() => {
-                  setResult(null);
-                  setFile(null);
-                  setAge("");
-                  setAnalysis("");
-                  setShowLifestyleForm(false);
-                  setLifestyle(DEFAULT_LIFESTYLE);
-                }}
+                onClick={() => { setResult(null); setFile(null); setAge(""); setAnalysis(""); setShowLifestyleForm(false); setLifestyle(DEFAULT_LIFESTYLE); }}
                 className="bg-gold hover:bg-gold-light text-background font-semibold cursor-pointer"
               >
                 Upload Another
               </Button>
-              <Button
-                onClick={() => router.push("/login")}
-                variant="outline"
-                className="border-gold/30 hover:bg-gold/10 cursor-pointer"
-              >
+              <Button onClick={() => router.push("/login")} variant="outline" className="border-gold/30 hover:bg-gold/10 cursor-pointer">
                 Sign up for chat & history →
               </Button>
             </div>

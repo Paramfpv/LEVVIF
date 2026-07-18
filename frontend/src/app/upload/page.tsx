@@ -24,7 +24,8 @@ interface UploadResult {
 
 interface LifestyleForm {
   female: string;
-  bmi: string;
+  height_cm: string;
+  weight_kg: string;
   ever_smoked: string;
   sleep_hours: string;
   trouble_sleeping: string;
@@ -34,9 +35,17 @@ interface LifestyleForm {
   ever_drinks: string;
 }
 
+function calcBMI(height_cm: string, weight_kg: string): number | null {
+  const h = parseFloat(height_cm);
+  const w = parseFloat(weight_kg);
+  if (!h || !w || h < 50 || h > 250 || w < 20 || w > 300) return null;
+  return Math.round((w / Math.pow(h / 100, 2)) * 10) / 10;
+}
+
 const DEFAULT_LIFESTYLE: LifestyleForm = {
   female: "",
-  bmi: "",
+  height_cm: "",
+  weight_kg: "",
   ever_smoked: "",
   sleep_hours: "",
   trouble_sleeping: "",
@@ -108,9 +117,10 @@ export default function UploadPage() {
   async function handleRefine() {
     if (!result) return;
     const ls = lifestyle;
+    const bmi = calcBMI(ls.height_cm, ls.weight_kg);
 
     if (
-      ls.female === "" || ls.bmi === "" || ls.ever_smoked === "" ||
+      ls.female === "" || !bmi || ls.ever_smoked === "" ||
       ls.sleep_hours === "" || ls.trouble_sleeping === "" ||
       ls.vigorous_work === "" || ls.vigorous_recreation === "" ||
       ls.sedentary_hours === "" || ls.ever_drinks === ""
@@ -130,7 +140,7 @@ export default function UploadPage() {
           biomarkers: result.extracted_biomarkers,
           lifestyle: {
             female: parseInt(ls.female),
-            bmi: parseFloat(ls.bmi),
+            bmi,
             ever_smoked: parseInt(ls.ever_smoked),
             sleep_hours: parseFloat(ls.sleep_hours),
             trouble_sleeping: parseInt(ls.trouble_sleeping),
@@ -351,17 +361,28 @@ export default function UploadPage() {
                           </div>
                         </div>
 
-                        {/* BMI */}
+                        {/* Height + Weight → BMI */}
                         <div className="space-y-2">
-                          <Label htmlFor="bmi">BMI (kg/m²)</Label>
-                          <Input
-                            id="bmi"
-                            type="number"
-                            placeholder="e.g. 24.5"
-                            value={lifestyle.bmi}
-                            onChange={(e) => setLS("bmi", e.target.value)}
-                            className="bg-background/50 border-gold/20 focus:border-gold"
-                          />
+                          <Label>Height & Weight</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="number"
+                              placeholder="Height (cm)"
+                              value={lifestyle.height_cm}
+                              onChange={(e) => setLS("height_cm", e.target.value)}
+                              className="bg-background/50 border-gold/20 focus:border-gold"
+                            />
+                            <Input
+                              type="number"
+                              placeholder="Weight (kg)"
+                              value={lifestyle.weight_kg}
+                              onChange={(e) => setLS("weight_kg", e.target.value)}
+                              className="bg-background/50 border-gold/20 focus:border-gold"
+                            />
+                          </div>
+                          {calcBMI(lifestyle.height_cm, lifestyle.weight_kg) && (
+                            <p className="text-xs text-gold">BMI: {calcBMI(lifestyle.height_cm, lifestyle.weight_kg)}</p>
+                          )}
                         </div>
 
                         {/* Sleep */}
